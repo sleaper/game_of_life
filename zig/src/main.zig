@@ -1,29 +1,28 @@
 const std = @import("std");
 const print = std.debug.print;
 
-const Cell = struct { live: bool };
-
 pub fn main() !void {
-    print("All your {s} are belong to us.\n", .{"codebase"});
-
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
+    var rnd = std.rand.DefaultPrng.init(0);
 
     // Get user input
-    const width: u64 = try ask_for_number("Width: ");
     const height: u64 = try ask_for_number("Height: ");
-    _ = try ask_for_string("Living cell symbol: ");
+    const width: u64 = try ask_for_number("Width: ");
+    // _ = try ask_for_string("Living cell symbol: ");
+    // _ = try ask_for_string("Dead cell symbol: ");
 
-    const matrix: [][]u64 = try allocator.alloc([]u64, height);
+    const matrix: [][]u64 = try allocator.alloc([]u64, height); // [[1,0,1,0],[0,1,0,0]]
 
-    for (0..width) |i| {
+    for (0..height) |i| {
         const row: []u64 = try allocator.alloc(u64, width);
         matrix[i] = row;
     }
 
     for (0..height) |x| {
         for (0..width) |y| {
-            matrix[x][y] = 0;
+            //Random seed
+            matrix[x][y] = if (rnd.random().boolean()) 1 else 0;
             print("{} ", .{matrix[x][y]});
         }
         print("\n", .{});
