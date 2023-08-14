@@ -19,22 +19,33 @@ pub fn main() !void {
         matrix[i] = row;
     }
 
-    for (0..height) |x| {
-        for (0..width) |y| {
-            //Random seed
-            matrix[x][y] = if (rnd.random().boolean()) 1 else 0;
-            print("{} ", .{matrix[x][y]});
-        }
-        print("\n", .{});
-    }
-
     // printMatrix(testMat);
 
-    // var generation: u16 = 0;
-    //
-    // while (generation <= 100) {
-    //     generation += 1;
-    // }
+    var generation: u16 = 0;
+
+    //Life loop
+    while (generation <= 10000) {
+        std.time.sleep(250000000);
+
+        //Border
+        for (0..width) |i| {
+            if (i == 3) print("Generation: {}", .{generation}) else print("- ", .{});
+        }
+
+        print("\n", .{});
+
+        //Draw matrix
+        for (0..height) |x| {
+            for (0..width) |y| {
+                //Random seed
+                matrix[x][y] = if (rnd.random().boolean()) 1 else 0;
+                print("{} ", .{matrix[x][y]});
+            }
+            print("\n", .{});
+        }
+
+        generation += 1;
+    }
 
     std.debug.print("Width = {}, height = {}", .{ width, height });
 
@@ -45,6 +56,7 @@ pub fn main() !void {
     _ = allocator.free(matrix);
 }
 
+// todo: if user enters wrong input, re-prompt him
 fn ask_for_number(str: []const u8) !u64 {
     const stdin = std.io.getStdIn().reader();
     const stdout = std.io.getStdOut().writer();
@@ -62,6 +74,7 @@ fn ask_for_number(str: []const u8) !u64 {
     }
 }
 
+//todo: ask how to get just u8 from user??
 fn ask_for_string(str: []const u8) ![]u8 {
     const stdin = std.io.getStdIn().reader();
     const stdout = std.io.getStdOut().writer();
