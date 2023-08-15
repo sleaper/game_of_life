@@ -1,5 +1,6 @@
 const std = @import("std");
 const print = std.debug.print;
+const Allocator = std.mem.Allocator;
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -9,22 +10,25 @@ pub fn main() !void {
     // Get user input
     const height: u64 = try ask_for_number("Height: ");
     const width: u64 = try ask_for_number("Width: ");
-    // _ = try ask_for_string("Living cell symbol: ");
-    // _ = try ask_for_string("Dead cell symbol: ");
+    const generations: u64 = try ask_for_number("Number of generations: ");
+    const live_symbol = try ask_for_string("Living cell symbol: ", &allocator);
+    const dead_symbol = try ask_for_string("Dead cell symbol: ", &allocator);
 
-    const matrix: [][]u64 = try allocator.alloc([]u64, height); // [[1,0,1,0],[0,1,0,0]]
+    print("Live: {s}\n", .{live_symbol});
+    print("Dead: {s}\n", .{dead_symbol});
+
+    // It has to be 3D array, because string (for symbols) is []u8
+    const matrix: [][][]u8 = try allocator.alloc([][]u8, height);
 
     for (0..height) |i| {
-        const row: []u64 = try allocator.alloc(u64, width);
+        const row: [][]u8 = try allocator.alloc([]u8, width);
         matrix[i] = row;
     }
-
-    // printMatrix(testMat);
 
     var generation: u16 = 0;
 
     //Life loop
-    while (generation <= 10000) {
+    while (generation <= generations) {
         std.time.sleep(250000000);
 
         //Border
@@ -38,11 +42,13 @@ pub fn main() !void {
         for (0..height) |x| {
             for (0..width) |y| {
                 //Random seed
-                matrix[x][y] = if (rnd.random().boolean()) 1 else 0;
-                print("{} ", .{matrix[x][y]});
+                matrix[x][y] = if (rnd.random().boolean()) live_symbol else dead_symbol;
+                print("{s} ", .{matrix[x][y]});
             }
             print("\n", .{});
         }
+
+        // Make the population alive
 
         generation += 1;
     }
@@ -54,32 +60,33 @@ pub fn main() !void {
         _ = allocator.free(row);
     }
     _ = allocator.free(matrix);
+    _ = allocator.free(dead_symbol);
+    _ = allocator.free(live_symbol);
 }
 
-// todo: if user enters wrong input, re-prompt him
 fn ask_for_number(str: []const u8) !u64 {
     const stdin = std.io.getStdIn().reader();
     const stdout = std.io.getStdOut().writer();
 
-    var buf: [10]u8 = undefined;
+    while (true) {
+        var buf: [10]u8 = undefined;
 
-    print("{s}", .{str});
-    try stdout.print("", .{});
+        print("{s}", .{str});
+        try stdout.print("", .{});
 
-    if (try stdin.readUntilDelimiterOrEof(buf[0..], '\n')) |user_input| {
-        print("Typeof {s}: {}\n", .{ user_input, @TypeOf(user_input) });
-        return std.fmt.parseInt(u64, user_input, 10);
-    } else {
-        return @as(u64, 0);
+        // Deprecated use streamUntilDelimiter instead, now sure how yet
+        if (try stdin.readUntilDelimiterOrEof(buf[0..], '\n')) |user_input| {
+            var num = std.fmt.parseInt(u64, user_input, 10) catch continue;
+            if (num > 0) return num;
+        }
     }
+    return @as(u64, 0);
 }
 
-//todo: ask how to get just u8 from user??
-fn ask_for_string(str: []const u8) ![]u8 {
+fn ask_for_string(str: []const u8, allocator: *const Allocator) ![]u8 {
+    const buf = try allocator.alloc(u8, 2);
     const stdin = std.io.getStdIn().reader();
     const stdout = std.io.getStdOut().writer();
-
-    var buf: [10]u8 = undefined;
 
     print("{s}", .{str});
     try stdout.print("", .{});
@@ -87,6 +94,6 @@ fn ask_for_string(str: []const u8) ![]u8 {
     if (try stdin.readUntilDelimiterOrEof(buf[0..], '\n')) |user_input| {
         return user_input;
     } else {
-        return null;
+        return "";
     }
 }
