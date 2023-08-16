@@ -43,12 +43,37 @@ pub fn main() !void {
             for (0..width) |y| {
                 //Random seed
                 matrix[x][y] = if (rnd.random().boolean()) live_symbol else dead_symbol;
-                print("{s} ", .{matrix[x][y]});
+            }
+        }
+
+        // todo: Make the population alive
+        for (matrix, 0..) |row, row_index| {
+            // print("{s}", .{row});
+            for (row, 0..) |_, column_index| {
+
+
+                // var bounds: i8 = 
+
+                while ()
+                // Rules
+                // var alive_sum: u8 = 0;
+                // var dead_sum: u8 = 0;
+                // for (row_index - 1..row_index + 1) |k| {
+                //     for (column_index - 1..column_index + 1) |l| {
+                //         if (k > 0 and k < height and l > 0 and l < width) {
+                //             if (matrix[k][l][0] == dead_symbol[0]) {
+                //                 dead_sum += 1;
+                //             } else if (matrix[k][l][0] == live_symbol[0]) {
+                //                 alive_sum += 1;
+                //             }
+                //         }
+                //     }
+                // }
+
+                print("alive: {}, dead: {}", .{ alive_sum, dead_sum });
             }
             print("\n", .{});
         }
-
-        // Make the population alive
 
         generation += 1;
     }
@@ -60,8 +85,8 @@ pub fn main() !void {
         _ = allocator.free(row);
     }
     _ = allocator.free(matrix);
-    _ = allocator.free(dead_symbol);
-    _ = allocator.free(live_symbol);
+    // _ = allocator.free(dead_symbol);
+    // _ = allocator.free(live_symbol);
 }
 
 fn ask_for_number(str: []const u8) !u64 {
