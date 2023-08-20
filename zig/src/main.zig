@@ -18,14 +18,29 @@ pub fn main() !void {
     print("Dead: {s}\n", .{dead_symbol});
 
     // It has to be 3D array, because string (for symbols) is []u8
-    const matrix: [][][]u8 = try allocator.alloc([][]u8, height);
-
+    var matrix: [][][]u8 = try allocator.alloc([][]u8, height);
     for (0..height) |i| {
         const row: [][]u8 = try allocator.alloc([]u8, width);
         matrix[i] = row;
     }
 
+    var next_matrix: [][][]u8 = try allocator.alloc([][]u8, height);
+    for (0..height) |i| {
+        const row: [][]u8 = try allocator.alloc([]u8, width);
+        next_matrix[i] = row;
+    }
+
     var generation: u16 = 0;
+
+    print("START:\n", .{});
+    for (0..height) |x| {
+        for (0..width) |y| {
+            //Random seed
+            matrix[x][y] = if (rnd.random().boolean()) live_symbol else dead_symbol;
+            print("{s} ", .{matrix[x][y]});
+        }
+        print("\n", .{});
+    }
 
     //Life loop
     while (generation <= generations) {
@@ -38,42 +53,75 @@ pub fn main() !void {
 
         print("\n", .{});
 
-        //Draw matrix
-        for (0..height) |x| {
-            for (0..width) |y| {
-                //Random seed
-                matrix[x][y] = if (rnd.random().boolean()) live_symbol else dead_symbol;
+        //TODO: try this with saturated arithmetics
+        var row_index: i8 = 0;
+        while (row_index < @as(isize, @intCast(height))) {
+            var column_index: i8 = 0;
+            while (column_index < @as(isize, @intCast(width))) {
+
+                // todo: Make the population alive
+                var alive_sum: u8 = 0;
+                var dead_sum: u8 = 0;
+
+                var k: isize = row_index - 1;
+                while (k <= row_index + 1) {
+                    var l: isize = column_index - 1;
+                    while (l <= column_index + 1) {
+                        if ((k >= 0 and k < height and l >= 0 and l < width) and (k != row_index or l != column_index)) {
+                            const cK = @as(usize, @intCast(k));
+                            const cL = @as(usize, @intCast(l));
+
+                            if (matrix[cK][cL][0] == dead_symbol[0]) {
+                                dead_sum += 1;
+                            } else if (matrix[cK][cL][0] == live_symbol[0]) {
+                                alive_sum += 1;
+                            }
+                        }
+
+                        l += 1;
+                    }
+
+                    k += 1;
+                }
+                // print("alive: {}, dead: {}, ", .{ alive_sum, dead_sum });
+                const cRow = @as(usize, @intCast(row_index));
+                const cColumn = @as(usize, @intCast(column_index));
+
+                const lookup_cell = &matrix[cRow][cColumn][0];
+                const new_cell = &next_matrix[cRow][cColumn][0];
+
+                if (lookup_cell.* == live_symbol[0]) {
+                    if (alive_sum == 2 or alive_sum == 3) {
+                        new_cell.* = live_symbol[0];
+                    } else if (alive_sum < 2) {
+                        new_cell.* = dead_symbol[0];
+                    } else if (alive_sum > 3) {
+                        new_cell.* = dead_symbol[0];
+                    }
+                } else if (lookup_cell.* == dead_symbol[0]) {
+                    if (dead_sum == 3) {
+                        new_cell.* = live_symbol[0];
+                    }
+                }
+
+                column_index += 1;
             }
+            row_index += 1;
         }
 
-        // todo: Make the population alive
-        for (matrix, 0..) |row, row_index| {
-            // print("{s}", .{row});
-            for (row, 0..) |_, column_index| {
+        print("\n", .{});
 
-
-                // var bounds: i8 = 
-
-                while ()
-                // Rules
-                // var alive_sum: u8 = 0;
-                // var dead_sum: u8 = 0;
-                // for (row_index - 1..row_index + 1) |k| {
-                //     for (column_index - 1..column_index + 1) |l| {
-                //         if (k > 0 and k < height and l > 0 and l < width) {
-                //             if (matrix[k][l][0] == dead_symbol[0]) {
-                //                 dead_sum += 1;
-                //             } else if (matrix[k][l][0] == live_symbol[0]) {
-                //                 alive_sum += 1;
-                //             }
-                //         }
-                //     }
-                // }
-
-                print("alive: {}, dead: {}", .{ alive_sum, dead_sum });
+        //  Print matrix
+        for (0..height) |x| {
+            for (0..width) |y| {
+                print("{s} ", .{next_matrix[x][y]});
             }
             print("\n", .{});
         }
+
+        const temp_matrix = matrix;
+        matrix = next_matrix;
+        next_matrix = temp_matrix;
 
         generation += 1;
     }
@@ -85,8 +133,11 @@ pub fn main() !void {
         _ = allocator.free(row);
     }
     _ = allocator.free(matrix);
-    // _ = allocator.free(dead_symbol);
-    // _ = allocator.free(live_symbol);
+
+    for (next_matrix) |row| {
+        _ = allocator.free(row);
+    }
+    _ = allocator.free(next_matrix);
 }
 
 fn ask_for_number(str: []const u8) !u64 {
