@@ -8,6 +8,12 @@ pub fn main() !void {
     var rnd = std.rand.DefaultPrng.init(0);
 
     // Get user input
+    // Example:
+    // Height: 40
+    // Width: 40
+    // Number of generations: 100
+    // Living cell symbol: #
+    // Dead cell symbol: .
     const height: u64 = try ask_for_number("Height: ");
     const width: u64 = try ask_for_number("Width: ");
     const generations: u64 = try ask_for_number("Number of generations: ");
@@ -20,13 +26,13 @@ pub fn main() !void {
     // It has to be 3D array, because string (for symbols) is []u8
     var matrix: [][][]u8 = try allocator.alloc([][]u8, height);
     for (0..height) |i| {
-        const row: [][]u8 = try allocator.alloc([]u8, width);
+        var row: [][]u8 = try allocator.alloc([]u8, width);
         matrix[i] = row;
     }
 
     var next_matrix: [][][]u8 = try allocator.alloc([][]u8, height);
     for (0..height) |i| {
-        const row: [][]u8 = try allocator.alloc([]u8, width);
+        var row: [][]u8 = try allocator.alloc([]u8, width);
         next_matrix[i] = row;
     }
 
@@ -37,6 +43,7 @@ pub fn main() !void {
         for (0..width) |y| {
             //Random seed
             matrix[x][y] = if (rnd.random().boolean()) live_symbol else dead_symbol;
+            next_matrix[x][y] = matrix[x][y];
             print("{s} ", .{matrix[x][y]});
         }
         print("\n", .{});
