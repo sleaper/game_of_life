@@ -2,149 +2,108 @@ const std = @import("std");
 const print = std.debug.print;
 const Allocator = std.mem.Allocator;
 
+const Cell = enum(u8) { alive = 1, dead = 0 };
+
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
-    var rnd = std.rand.DefaultPrng.init(0);
 
-    // Get user input
-    // Example:
-    // Height: 40
-    // Width: 40
-    // Number of generations: 100
-    // Living cell symbol: #
-    // Dead cell symbol: .
     const height: u64 = try ask_for_number("Height: ");
     const width: u64 = try ask_for_number("Width: ");
-    const generations: u64 = try ask_for_number("Number of generations: ");
-    const live_symbol = try ask_for_string("Living cell symbol: ", &allocator);
-    const dead_symbol = try ask_for_string("Dead cell symbol: ", &allocator);
+    // const generations: u64 = try ask_for_number("Number of generations: ");
+    // const live_symbol = try ask_for_string("Living cell symbol: ", allocator);
+    // const dead_symbol = try ask_for_string("Dead cell symbol: ", allocator);
 
-    print("Live: {s}\n", .{live_symbol});
-    print("Dead: {s}\n", .{dead_symbol});
+    var matrix: [][]u8 = undefined;
+    matrix = try initMatrix(width, height, allocator);
+    randomizeMatrix(matrix);
 
-    // It has to be 3D array, because string (for symbols) is []u8
-    var matrix: [][][]u8 = try allocator.alloc([][]u8, height);
-    for (0..height) |i| {
-        var row: [][]u8 = try allocator.alloc([]u8, width);
-        matrix[i] = row;
+    while (true) {
+        print_matrix(matrix);
+        try step(&matrix, width, height, allocator);
     }
+}
 
-    var next_matrix: [][][]u8 = try allocator.alloc([][]u8, height);
-    for (0..height) |i| {
-        var row: [][]u8 = try allocator.alloc([]u8, width);
-        next_matrix[i] = row;
-    }
+fn step(matrix: *[][]u8, width: usize, height: usize, allocator: Allocator) !void {
+    var newMatrix: [][]u8 = undefined;
+    newMatrix = try initMatrix(width, height, allocator);
 
-    var generation: u16 = 0;
-
-    print("START:\n", .{});
-    for (0..height) |x| {
-        for (0..width) |y| {
-            //Random seed
-            matrix[x][y] = if (rnd.random().boolean()) live_symbol else dead_symbol;
-            next_matrix[x][y] = matrix[x][y];
-            print("{s} ", .{matrix[x][y]});
-        }
-        print("\n", .{});
-    }
-
-    //Life loop
-    while (generation <= generations) {
-        std.time.sleep(250000000);
-
-        //Border
-        for (0..width) |i| {
-            if (i == 3) print("Generation: {}", .{generation}) else print("- ", .{});
-        }
-
-        print("\n", .{});
-
-        //TODO: try this with saturated arithmetics
-        var row_index: i8 = 0;
-        while (row_index < @as(isize, @intCast(height))) {
-            var column_index: i8 = 0;
-            while (column_index < @as(isize, @intCast(width))) {
-
-                // todo: Make the population alive
-                var alive_sum: u8 = 0;
-                var dead_sum: u8 = 0;
-
-                var k: isize = row_index - 1;
-                while (k <= row_index + 1) {
-                    var l: isize = column_index - 1;
-                    while (l <= column_index + 1) {
-                        if ((k >= 0 and k < height and l >= 0 and l < width) and (k != row_index or l != column_index)) {
-                            const cK = @as(usize, @intCast(k));
-                            const cL = @as(usize, @intCast(l));
-
-                            if (matrix[cK][cL][0] == dead_symbol[0]) {
-                                dead_sum += 1;
-                            } else if (matrix[cK][cL][0] == live_symbol[0]) {
-                                alive_sum += 1;
-                            }
-                        }
-
-                        l += 1;
+    for (matrix.*, 0..) |row, x| {
+        for (row, 0..) |cell, y| {
+            const aliveNeighbors = countAliveNeighbors(matrix.*, x, y, width, height);
+            //ERROR here
+            switch (cell) {
+                @intFromEnum(Cell.alive) => {
+                    if (aliveNeighbors < 2 or aliveNeighbors > 3) {
+                        newMatrix[x][y] = @intFromEnum(Cell.dead);
+                    } else {
+                        newMatrix[x][y] = @intFromEnum(Cell.alive);
                     }
-
-                    k += 1;
-                }
-                // print("alive: {}, dead: {}, ", .{ alive_sum, dead_sum });
-                const cRow = @as(usize, @intCast(row_index));
-                const cColumn = @as(usize, @intCast(column_index));
-
-                const lookup_cell = &matrix[cRow][cColumn][0];
-                const new_cell = &next_matrix[cRow][cColumn][0];
-
-                if (lookup_cell.* == live_symbol[0]) {
-                    if (alive_sum == 2 or alive_sum == 3) {
-                        new_cell.* = live_symbol[0];
-                    } else if (alive_sum < 2) {
-                        new_cell.* = dead_symbol[0];
-                    } else if (alive_sum > 3) {
-                        new_cell.* = dead_symbol[0];
+                },
+                @intFromEnum(Cell.dead) => {
+                    if (aliveNeighbors == 3) {
+                        newMatrix[x][y] = @intFromEnum(Cell.alive);
+                    } else {
+                        newMatrix[x][y] = @intFromEnum(Cell.dead);
                     }
-                } else if (lookup_cell.* == dead_symbol[0]) {
-                    if (dead_sum == 3) {
-                        new_cell.* = live_symbol[0];
-                    }
-                }
-
-                column_index += 1;
+                },
+                else => newMatrix[x][y] = @intFromEnum(Cell.alive),
             }
-            row_index += 1;
         }
-
-        print("\n", .{});
-
-        //  Print matrix
-        for (0..height) |x| {
-            for (0..width) |y| {
-                print("{s} ", .{next_matrix[x][y]});
-            }
-            print("\n", .{});
-        }
-
-        const temp_matrix = matrix;
-        matrix = next_matrix;
-        next_matrix = temp_matrix;
-
-        generation += 1;
     }
 
-    std.debug.print("Width = {}, height = {}", .{ width, height });
+    for (matrix.*, 0..) |row, x| {
+        for (row, 0..) |_, y| {
+            matrix[x][y] = newMatrix[x][y];
+        }
+    }
+}
 
-    // Dealloc matrix
+fn countAliveNeighbors(matrix: [][]u8, x: usize, y: usize, width: usize, height: usize) usize {
+    var count: usize = 0;
+    var k: isize = @as(isize, @intCast(x)) - 1;
+    while (k <= x + 1) {
+        var l: isize = @as(isize, @intCast(y)) - 1;
+        while (l <= y + 1) {
+            if ((k >= 0 and k < height and l >= 0 and l < width) and (k != x or l != y)) {
+                const cK = @as(usize, @intCast(k));
+                const cL = @as(usize, @intCast(l));
+                if (matrix[cK][cL] == @intFromEnum(Cell.alive)) {
+                    count += 1;
+                }
+            }
+            l += 1;
+        }
+        k += 1;
+    }
+
+    return count;
+}
+
+fn initMatrix(width: u64, height: u64, allocator: Allocator) ![][]u8 {
+    var matrix = try allocator.alloc([]u8, height);
+    for (matrix) |*row| {
+        row.* = try allocator.alloc(u8, width);
+    }
+    return matrix;
+}
+
+fn randomizeMatrix(matrix: [][]u8) void {
+    var rnd = std.rand.DefaultPrng.init(0);
     for (matrix) |row| {
-        _ = allocator.free(row);
+        for (row) |*cell| {
+            cell.* = if (rnd.random().boolean()) @intFromEnum(Cell.alive) else @intFromEnum(Cell.dead);
+        }
     }
-    _ = allocator.free(matrix);
+}
 
-    for (next_matrix) |row| {
-        _ = allocator.free(row);
+fn print_matrix(matrix: [][]u8) void {
+    for (matrix) |row| {
+        for (row) |cell| {
+            print("{} ", .{cell});
+        }
+        print("\n", .{});
     }
-    _ = allocator.free(next_matrix);
 }
 
 fn ask_for_number(str: []const u8) !u64 {
@@ -153,30 +112,31 @@ fn ask_for_number(str: []const u8) !u64 {
 
     while (true) {
         var buf: [10]u8 = undefined;
+        var buf_stream = std.io.fixedBufferStream(&buf);
 
-        print("{s}", .{str});
+        std.debug.print("{s}", .{str});
         try stdout.print("", .{});
 
-        // Deprecated use streamUntilDelimiter instead, now sure how yet
-        if (try stdin.readUntilDelimiterOrEof(buf[0..], '\n')) |user_input| {
-            var num = std.fmt.parseInt(u64, user_input, 10) catch continue;
-            if (num > 0) return num;
-        }
+        stdin.streamUntilDelimiter(buf_stream.writer(), '\n', null) catch continue;
+
+        const buf_trimmed = std.mem.trim(u8, buf_stream.getWritten(), " \n\r");
+        var num = std.fmt.parseInt(u64, buf_trimmed, 10) catch continue;
+
+        if (num > 0) return num;
     }
     return @as(u64, 0);
 }
 
-fn ask_for_string(str: []const u8, allocator: *const Allocator) ![]u8 {
-    const buf = try allocator.alloc(u8, 2);
+fn ask_for_string(str: []const u8, allocator: Allocator) ![]const u8 {
     const stdin = std.io.getStdIn().reader();
     const stdout = std.io.getStdOut().writer();
+    var buf = try allocator.alloc(u8, 2);
+    var buf_stream = std.io.fixedBufferStream(buf);
 
-    print("{s}", .{str});
+    std.debug.print("{s}", .{str});
     try stdout.print("", .{});
 
-    if (try stdin.readUntilDelimiterOrEof(buf[0..], '\n')) |user_input| {
-        return user_input;
-    } else {
-        return "";
-    }
+    try stdin.streamUntilDelimiter(buf_stream.writer(), '\n', null);
+    const buf_trimmed = std.mem.trim(u8, buf_stream.getWritten(), " \n\r");
+    return buf_trimmed;
 }
