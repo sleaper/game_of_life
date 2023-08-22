@@ -2,7 +2,7 @@ const std = @import("std");
 const print = std.debug.print;
 const Allocator = std.mem.Allocator;
 
-const Cell = enum(u8) { alive = 1, dead = 0 };
+const Cell = enum(u8) { alive = '#', dead = '.' };
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -10,7 +10,7 @@ pub fn main() !void {
 
     const height: u64 = try ask_for_number("Height: ");
     const width: u64 = try ask_for_number("Width: ");
-    // const generations: u64 = try ask_for_number("Number of generations: ");
+    const generations: u64 = try ask_for_number("Number of generations: ");
     // const live_symbol = try ask_for_string("Living cell symbol: ", allocator);
     // const dead_symbol = try ask_for_string("Dead cell symbol: ", allocator);
 
@@ -18,9 +18,13 @@ pub fn main() !void {
     matrix = try initMatrix(width, height, allocator);
     randomizeMatrix(matrix);
 
-    while (true) {
+    var generation: u64 = 0;
+    while (generation <= generations) {
+        print("--------Generation: {}--------------- \n", .{generation});
         print_matrix(matrix);
         try step(&matrix, width, height, allocator);
+        generation += 1;
+        std.time.sleep(100000000);
     }
 }
 
@@ -31,7 +35,6 @@ fn step(matrix: *[][]u8, width: usize, height: usize, allocator: Allocator) !voi
     for (matrix.*, 0..) |row, x| {
         for (row, 0..) |cell, y| {
             const aliveNeighbors = countAliveNeighbors(matrix.*, x, y, width, height);
-            //ERROR here
             switch (cell) {
                 @intFromEnum(Cell.alive) => {
                     if (aliveNeighbors < 2 or aliveNeighbors > 3) {
@@ -54,7 +57,7 @@ fn step(matrix: *[][]u8, width: usize, height: usize, allocator: Allocator) !voi
 
     for (matrix.*, 0..) |row, x| {
         for (row, 0..) |_, y| {
-            matrix[x][y] = newMatrix[x][y];
+            matrix.*[x][y] = newMatrix[x][y];
         }
     }
 }
@@ -100,7 +103,7 @@ fn randomizeMatrix(matrix: [][]u8) void {
 fn print_matrix(matrix: [][]u8) void {
     for (matrix) |row| {
         for (row) |cell| {
-            print("{} ", .{cell});
+            print("{u} ", .{cell});
         }
         print("\n", .{});
     }
