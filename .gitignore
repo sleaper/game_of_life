@@ -1,2 +1,12 @@
 zig-cache
 zig-out
+.idea/
+.vs/
+c_raylib/cmake-build-debug/
+c_raylib/bin/
+c_raylib/build/
+c_raylib/out/
+c_raylib/CMakeSettings.json
+c_raylib/_deps/
+c_raylib/CMakeFiles/
+c_raylib/my_raylib_game

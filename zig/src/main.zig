@@ -10,6 +10,7 @@ pub fn main() !void {
 
     const height: u64 = try ask_for_number("Height: ");
     const width: u64 = try ask_for_number("Width: ");
+
     const generations: u64 = try ask_for_number("Number of generations: ");
     // const live_symbol = try ask_for_string("Living cell symbol: ", allocator);
     // const dead_symbol = try ask_for_string("Dead cell symbol: ", allocator);
